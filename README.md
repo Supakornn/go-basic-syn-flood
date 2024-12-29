@@ -11,8 +11,8 @@ A simple network testing tool for simulating SYN flood attacks, written in Go us
 git clone https://github.com/Supakornn/syn-flood
 cd syn-flood
 
-# Build
-go build
+# Install dependencies
+go mod tidy
 
 # Run (requires root privileges)
 sudo go run main.go

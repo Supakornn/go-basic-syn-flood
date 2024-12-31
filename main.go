@@ -44,6 +44,7 @@ func resolveDNS(domain string) (net.IP, error) {
 	return ips[0], nil
 }
 
+// Send SYN flood
 func sendSynFlood(target string, port uint16, numPackets int, randSource *rand.Rand, networkInterface string, wg *sync.WaitGroup, handle *pcap.Handle) {
 	log.Printf("Starting SYN flood on %s:%d with %d packets\n", target, port, numPackets)
 

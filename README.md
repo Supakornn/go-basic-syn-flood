@@ -40,6 +40,3 @@ Example:
 sudo go run main.go -interface en0 -target example.com -port 80 -numPackets 1000
 ```
 
-## Disclaimer
-
-This tool is intended for educational purposes only. Unauthorized usage against targets is illegal and unethical. Always obtain proper authorization before testing against any network or system.

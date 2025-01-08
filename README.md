@@ -26,13 +26,9 @@ sudo go run main.go
 
 ## Usage
 
-After building the tool, you can run it with the following command:
-
 ```bash
 sudo go run main.go -interface <network-interface> -target <target-ip-or-domain> -port <target-port> -numPackets <number-of-packets>
 ```
-
-Replace `<network-interface>`, `<target-ip-or-domain>`, `<target-port>`, and `<number-of-packets>` with the appropriate values.
 
 Example:
 

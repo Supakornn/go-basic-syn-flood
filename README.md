@@ -16,9 +16,6 @@ go mod tidy
 
 # Build
 go build
-
-# Run (requires root privileges)
-sudo go run main.go
 ```
 
 ## Requirements
